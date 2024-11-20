@@ -23,7 +23,7 @@ app.use(cors());
 app.get('/', (req, res) => res.send('It is Working !!! API Running'));
 
 // Auth routes
-app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 
 // Listener
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
