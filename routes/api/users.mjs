@@ -2,7 +2,8 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { check, validationResult } from 'express-validator';
-import User from '../../models/User.mjs'; // Assuming your User model is here
+import User from '../../models/User.mjs';
+import auth from '../../middleware/auth.mjs';  // JWT verification middleware
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -14,31 +15,25 @@ const router = express.Router();
 router.post(
   '/',
   [
-    check('firstName', 'Name is required').not().isEmpty(),
-    check('lastName', 'Name is required').not().isEmpty(),
+    check('firstName', 'First name is required').not().isEmpty(),
+    check('lastName', 'Last name is required').not().isEmpty(),
     check('email', 'Please include a valid email').isEmail(),
-    check('password', 'Please enter a password with 8 or more characters').isLength({ min: 6 }),
+    check('password', 'Please enter a password with 6 or more characters').isLength({ min: 6 }),
   ],
   async (req, res) => {
-    // Run our validation 'checks' on the request body
     const errors = validationResult(req);
-
-    // If there are errors, respond with the errors
-    if (!errors.isEmpty())
+    if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
+    }
 
-    const {  firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, email, password } = req.body;
 
     try {
-      // Check if user already exists in the DB
       let user = await User.findOne({ email });
-
-      // If user exists, return with error message
       if (user) {
-        return res.status(400).json({ errors: [{ msg: 'User Already Exists' }] });
+        return res.status(400).json({ errors: [{ msg: 'User already exists' }] });
       }
 
-      // Create a new User
       user = new User({
         firstName,
         lastName,
@@ -46,24 +41,15 @@ router.post(
         password,
       });
 
-      // Encrypt the password
       const salt = await bcrypt.genSalt(10);
       user.password = await bcrypt.hash(password, salt);
 
-      // Save the new user to the database
       await user.save();
 
-      // Create JWT payload
-      const payload = {
-        user: {
-          id: user.id,
-        },
-      };
+      const payload = { user: { id: user.id } };
 
-      // Sign the JWT token with expiration of 1 hour
       jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1hr' }, (err, token) => {
         if (err) throw err;
-        // Return the token to the client
         res.json({ token });
       });
     } catch (err) {
@@ -72,5 +58,64 @@ router.post(
     }
   }
 );
+
+// @route    GET api/users/:id
+// @desc     Get user by ID
+// @access   Private
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    res.json(user);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ errors: [{ msg: 'Server Error' }] });
+  }
+});
+
+// @route    PUT api/users/:id
+// @desc     Update user details
+// @access   Private
+router.put('/:id', auth, async (req, res) => {
+  const { firstName, lastName, email, password } = req.body;
+  const updatedFields = {};
+
+  if (firstName) updatedFields.firstName = firstName;
+  if (lastName) updatedFields.lastName = lastName;
+  if (email) updatedFields.email = email;
+  if (password) {
+    const salt = await bcrypt.genSalt(10);
+    updatedFields.password = await bcrypt.hash(password, salt);
+  }
+
+  try {
+    const user = await User.findByIdAndUpdate(req.params.id, { $set: updatedFields }, { new: true });
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    res.json(user);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ errors: [{ msg: 'Server Error' }] });
+  }
+});
+
+// @route    DELETE api/users/:id
+// @desc     Delete user
+// @access   Private
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    res.json({ msg: 'User deleted' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ errors: [{ msg: 'Server Error' }] });
+  }
+});
 
 export default router;
