@@ -2,28 +2,26 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 dotenv.config();
 
-export default (req, res, next) => {
-    // Look/pull token from the header
-    const token = req.header('x-auth-token');
-
-//if token isn't found
-
-if(!token) {
-    return res.status (401).json({error: [{msg: 'No Token, Auth Denied'}]})
-}
- 
-try {
-    //jwt token Verification
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
- // Add user from payload to request object
-    req.user = decoded.user;
-
-    next()
-
-} catch (err) {
-    console.error(err);
-    res.status (401).json({error: [{msg: 'Invalid Token'}]})
-}
-
-};
+const protect = (req, res, next) => {
+    let token;
+    if (req.headers['x-auth-token']) {
+      token = req.headers['x-auth-token'];
+    }
+    if (!token) {
+      return res.status(401).json({ message: 'No token, authorization denied' });
+    }
+  
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = decoded.user;
+      next();
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: 'Token has expired, please log in again' });
+      }
+      res.status(401).json({ message: 'Invalid token' });
+    }
+  };
+  
+  export default protect;
+  

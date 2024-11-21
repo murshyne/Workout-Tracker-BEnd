@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { check, validationResult } from 'express-validator';
 import User from '../../models/User.mjs';
 import auth from '../../middleware/auth.mjs';
-import upload from '../../middleware/upload.mjs';
+import { upload } from '../../middleware/upload.mjs';
 import cloudinary from '../../config/cloudinary.mjs'; 
 import fs from 'fs';
 import dotenv from 'dotenv';
@@ -124,7 +124,7 @@ router.delete('/:id', auth, async (req, res) => {
 // @route    POST api/users/upload/:id
 // @desc     Upload profile picture
 // @access   Private
-router.post('/upload/:id', [auth, upload.single('profilePicture')], async (req, res) => {
+router.post('/upload/:id', [auth, upload], async (req, res) => {
   try {
     // Check if a file was uploaded
     if (!req.file) {
