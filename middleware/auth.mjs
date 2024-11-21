@@ -14,8 +14,9 @@ if(!token) {
  
 try {
     //jwt token Verification
-    const decoded = jwt.verify(token, process.env.jwtSecret);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+ // Add user from payload to request object
     req.user = decoded.user;
 
     next()
