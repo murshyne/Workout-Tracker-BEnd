@@ -26,7 +26,7 @@ router.get('/', auth, async (req, res) => {
 // @desc     Login user
 // @access   Public
 router.post(
-  '/',
+  '/login',
   [
     check('email', 'Please include a valid email').isEmail(),
     check('password', 'Password is required').exists(),
