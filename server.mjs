@@ -25,6 +25,7 @@ app.use(cors({
 app.get('/', (req, res) => res.send('It is Working !!! Api Running'));
 
 // Define Routes
+app.use('/api/auth', authRoutes);
 app.use('/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/auth', userRoutes);
